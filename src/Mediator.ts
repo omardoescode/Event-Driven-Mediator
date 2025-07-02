@@ -1,10 +1,10 @@
 import fs from "fs";
 import path from "path";
 import type { Workflow } from "./workflow/Workflow";
-import WorkflowParser from "./workflow/WorkflowParser";
 import { Kafka, logLevel, type Consumer } from "kafkajs";
 import WorkflowExecutor from "./workflow/WorkflowExecutor";
 import { EventPayloadSchema } from "./event/EventPayload";
+import type { WorkflowParser } from "./workflow/WorkflowParser";
 
 export interface IMediator {
   init_workflows(dir_path: string): Promise<void>;
@@ -14,12 +14,11 @@ export interface IMediator {
 }
 
 class Mediator implements IMediator {
-  private static _instance: Mediator | null = null;
   private workflows_by_initiating_topic: Map<string, Workflow> = new Map();
   private kafka: Kafka;
   private consumers: Map<string, Consumer> = new Map();
 
-  private constructor() {
+  constructor(private readonly parserFactory: () => WorkflowParser) {
     this.kafka = new Kafka({
       clientId: "Mediator",
       brokers: ["localhost:29092"],
@@ -32,19 +31,12 @@ class Mediator implements IMediator {
     });
   }
 
-  public static instance(): Mediator {
-    if (!Mediator._instance) {
-      Mediator._instance = new Mediator();
-    }
-    return Mediator._instance;
-  }
-
   public async init_workflows(dir_path: string): Promise<void> {
     const files = await fs.promises.readdir(dir_path);
 
     for (const file of files) {
       const full_path = path.join(dir_path, file);
-      const parser = new WorkflowParser();
+      const parser = this.parserFactory();
 
       try {
         const workflow = await parser.parse_workflow(full_path);

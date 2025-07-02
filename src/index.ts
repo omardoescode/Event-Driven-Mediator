@@ -1,7 +1,8 @@
 import Mediator from "./Mediator";
+import YAMLWorkflowParser from "./workflow/YAMLWorkflowParser";
 
 async function main() {
-  const mediator = Mediator.instance();
+  const mediator = new Mediator(() => new YAMLWorkflowParser());
   try {
     await mediator.init_workflows("./workflows");
     await mediator.init_topics();
