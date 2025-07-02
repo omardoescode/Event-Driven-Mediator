@@ -1,0 +1,21 @@
+name: test-workflow
+description: This is a test workflow
+version: 0.0.1
+initiating_topic: test-workflow.init
+initiating_name: InitiatingEvent
+
+steps:
+  - name: SandboxCreation
+    topic: sandbox.execute.create
+    depends_on: []
+    expected_response_topic: step.completed.create
+    input:
+      name: "{{InitiatingEvent.name}}"
+
+  - name: ExecutorTest
+    topic: executor.execute.test
+    depends_on: [SandboxCreation]
+    input:
+      sandbox_container_id: "{{SandboxCreation.container_id}}"
+      sandbox_server_address: "{{SandboxCreation.server_address}}"
+    expected_response_topic: executor.completed.test
