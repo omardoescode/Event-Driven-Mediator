@@ -50,8 +50,7 @@ class Mediator implements IMediator {
 
   /**
    * Creates a new Mediator instance.
-   * @param {() => WorkflowParser} parser_factory - Factory function that creates workflow parser instances
-   * @param StateStore<WorkflowState> statte_store - A workflow state store used by workflow executor
+   * @param {MediatorConfig} config - Configuration object with parser_factory, state_store, success_registry, and failure_registry.
    */
   constructor({
     parser_factory,
