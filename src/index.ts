@@ -11,10 +11,12 @@ import redis_client from "./redis_client";
  */
 const folder_name = "./workflows";
 async function main() {
-  const mediator = new Mediator(
-    () => new YAMLWorkflowParser(),
-    new RedisStateStore(redis_client),
-  );
+  const mediator = new Mediator({
+    failure_registry: {},
+    success_registry: {},
+    parser_factory: () => new YAMLWorkflowParser(),
+    state_store: new RedisStateStore(redis_client),
+  });
   const shutdown = async () => {
     console.log("Disconnecting Consumers...");
     await mediator.disconnect();

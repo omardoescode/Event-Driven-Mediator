@@ -33,6 +33,13 @@ export interface IWorkflowExecutor {
   ): Promise<void>;
 }
 
+export interface WorkflowExecutorConfig {
+  kafka: Kafka;
+  state_store: StateStore<WorkflowState>;
+  success_registry: ActionRegistry;
+  failure_registry: ActionRegistry;
+}
+
 /**
  * Handles the execution of workflow instances.
  * Manages workflow state in Redis and coordinates step execution through Kafka.
@@ -48,17 +55,18 @@ class WorkflowExecutor implements IWorkflowExecutor {
   /** Action registery for failure events */
   private failure_registry: ActionRegistry;
 
+  /** Store for workflows */
+  private state_store: StateStore<WorkflowState>;
+
   /**
    * Creates a new WorkflowExecutor instance.
    * @param {Kafka} kafka - Kafka client instance for message production
    */
-  constructor(
-    kafka: Kafka,
-    private state_store: StateStore<WorkflowState>,
-  ) {
-    this.kafka_producer = kafka.producer();
-    this.success_registry = {};
-    this.failure_registry = {};
+  constructor(config: WorkflowExecutorConfig) {
+    this.kafka_producer = config.kafka.producer();
+    this.state_store = config.state_store;
+    this.success_registry = config.success_registry;
+    this.failure_registry = config.failure_registry;
   }
 
   /**

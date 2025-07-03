@@ -1,10 +1,13 @@
 import type { WorkflowConfig } from "./schemas/WorkflowConfig";
 import { Kafka, logLevel, type Consumer } from "kafkajs";
-import WorkflowExecutor from "./workflow/WorkflowExecutor";
+import WorkflowExecutor, {
+  type WorkflowExecutorConfig,
+} from "./workflow/WorkflowExecutor";
 import { EventPayloadSchema } from "./event/EventPayload";
 import type { WorkflowParser } from "./interfaces/WorkflowParser";
 import type StateStore from "./interfaces/StateStore";
 import type WorkflowState from "./interfaces/WorkflowState";
+import type ActionRegistry from "./workflow/ActionRegistry";
 
 /**
  * Interface defining the core functionality of the Mediator service.
@@ -15,6 +18,13 @@ export interface IMediator {
   init_topics(flows: WorkflowConfig[]): Promise<void>;
   listen(): Promise<void>;
   disconnect(): Promise<void>;
+}
+
+export interface MediatorConfig {
+  parser_factory: () => WorkflowParser;
+  state_store: StateStore<WorkflowState>;
+  success_registry: ActionRegistry;
+  failure_registry: ActionRegistry;
 }
 
 /**
@@ -32,20 +42,35 @@ class Mediator implements IMediator {
   /** Map of Kafka consumers indexed by their topic names */
   private consumers: Map<string, Consumer> = new Map();
 
+  /** config for executors */
+  private executor_config: WorkflowExecutorConfig;
+
+  /** factory method for workflow parsers */
+  private parser_factory: () => WorkflowParser;
+
   /**
    * Creates a new Mediator instance.
-   * @param {() => WorkflowParser} parserFactory - Factory function that creates workflow parser instances
+   * @param {() => WorkflowParser} parser_factory - Factory function that creates workflow parser instances
    * @param StateStore<WorkflowState> statte_store - A workflow state store used by workflow executor
    */
-  constructor(
-    private readonly parserFactory: () => WorkflowParser,
-    private state_store: StateStore<WorkflowState>,
-  ) {
+  constructor({
+    parser_factory,
+    state_store,
+    success_registry,
+    failure_registry,
+  }: MediatorConfig) {
     this.kafka = new Kafka({
       clientId: "Mediator",
       brokers: ["localhost:29092"],
       logLevel: logLevel.ERROR, // TODO: Remove this, and find some formatter for this log
     });
+    this.parser_factory = parser_factory;
+    this.executor_config = {
+      state_store,
+      kafka: this.kafka,
+      success_registry,
+      failure_registry,
+    };
   }
 
   /**
@@ -55,7 +80,7 @@ class Mediator implements IMediator {
    * @returns {Promise<void>}
    */
   public async init_workflow(file_name: string): Promise<void> {
-    const parser = this.parserFactory();
+    const parser = this.parser_factory();
     try {
       const workflow = await parser.parse_workflow(file_name);
       this.workflows.set(workflow.initiating_event.topic, workflow);
@@ -126,7 +151,7 @@ class Mediator implements IMediator {
             const content = message.value?.toString();
             if (!content) return;
             console.log(`📨 Received message on ${topic}: ${content}`);
-            const executor = new WorkflowExecutor(this.kafka, this.state_store);
+            const executor = new WorkflowExecutor(this.executor_config);
             executor.init(workflow, content);
           },
         });
@@ -164,10 +189,7 @@ class Mediator implements IMediator {
                 return;
               }
               console.log(`📨 Received message on ${topic}: ${content}`);
-              const executor = new WorkflowExecutor(
-                this.kafka,
-                this.state_store,
-              );
+              const executor = new WorkflowExecutor(this.executor_config);
               executor.continue(workflow, topic, parsed.data);
             },
           });
