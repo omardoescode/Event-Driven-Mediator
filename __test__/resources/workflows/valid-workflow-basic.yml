@@ -1,0 +1,22 @@
+name: BasicWorkflow
+description: A sample workflow
+version: "1.0.0"
+initiating_event:
+  topic: trigger.workflow
+  name: triggerUserWorkflow
+steps:
+  - name: CreateUser
+    type: event
+    topic: users.execute.create
+    response: event
+    response_topic:
+      success:
+        - users.completed.create
+      failure:
+        - users.failed.create
+    on_failure:
+      action: retry
+      max_attempts: 3
+    on_success:
+      - action: log
+        message: "User created successfully"

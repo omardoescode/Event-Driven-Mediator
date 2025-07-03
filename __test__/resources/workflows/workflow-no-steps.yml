@@ -1,0 +1,6 @@
+name: NoStepsWorkflow
+version: "1.0.0"
+initiating_event:
+  topic: trigger.workflow
+  name: triggerSomething
+steps: []

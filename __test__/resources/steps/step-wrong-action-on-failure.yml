@@ -1,0 +1,9 @@
+name: CreateUser
+type: event
+topic: users.execute.create
+on_failure:
+  action: for_test
+  max_attempts: 3
+on_success:
+  action: log
+  message: "User created successfully"

@@ -1,0 +1,9 @@
+name: CreateUser
+type: event
+topic: users.execute.create
+response: event
+response_topic:
+  success:
+    - users.completed.create
+  failure:
+    - users.failed.create
