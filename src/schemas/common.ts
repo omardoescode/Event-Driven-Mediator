@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Regex pattern for Kafka topic validation.
@@ -19,7 +19,7 @@ export const TopicSchema = z
   .string()
   .regex(
     TOPIC_REGEX,
-    "Invalid topic format. Expected format: <namespace>.(success|failure|execute).<action>",
+    'Invalid topic format. Expected format: <namespace>.(success|failure|execute).<action>'
   );
 
 /**
@@ -30,7 +30,7 @@ export const SuccessTopicSchema = z
   .string()
   .regex(
     SUCCESS_TOPIC_REGIX,
-    "Invalid success topic format. Expected: <namespace>.success.<action>",
+    'Invalid success topic format. Expected: <namespace>.success.<action>'
   );
 
 /**
@@ -41,7 +41,7 @@ export const FailureTopicSchema = z
   .string()
   .regex(
     FAILURE_TOPIC_REGIX,
-    "Invalid failure topic format. Expected: <namespace>.failure.<action>",
+    'Invalid failure topic format. Expected: <namespace>.failure.<action>'
   );
 
 /**
@@ -52,7 +52,7 @@ export const ExecuteTopicSchema = z
   .string()
   .regex(
     EXECUTE_TOPIC_REGIX,
-    "Invalid execute topic format. Expected: <namespace>.execute.<action>",
+    'Invalid execute topic format. Expected: <namespace>.execute.<action>'
   );
 
 /**
@@ -69,7 +69,7 @@ export const SemanticVersionSchema = z
   .string()
   .regex(
     SEMANTIC_VERSION_REGEX,
-    "Version must follow semantic versioning (x.y.z)",
+    'Version must follow semantic versioning (x.y.z)'
   );
 
 /**

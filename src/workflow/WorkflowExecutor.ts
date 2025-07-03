@@ -1,12 +1,12 @@
-import type { WorkflowConfig } from "../schemas/WorkflowConfig";
-import type { Kafka, Producer } from "kafkajs";
-import type { EventPayload } from "../event/EventPayload";
-import type { StepConfig } from "../schemas/StepConfig";
-import type WorkflowState from "../interfaces/WorkflowState";
-import type ActionRegistry from "./ActionRegistry";
-import { ValidationPatterns } from "../schemas/common";
-import type { StepState } from "../interfaces/WorkflowState";
-import type StateStore from "../interfaces/StateStore";
+import type { WorkflowConfig } from '../schemas/WorkflowConfig';
+import type { Kafka, Producer } from 'kafkajs';
+import type { EventPayload } from '../event/EventPayload';
+import type { StepConfig } from '../schemas/StepConfig';
+import type WorkflowState from '../interfaces/WorkflowState';
+import type ActionRegistry from './ActionRegistry';
+import { ValidationPatterns } from '../schemas/common';
+import type { StepState } from '../interfaces/WorkflowState';
+import type StateStore from '../interfaces/StateStore';
 
 /**
  * Interface defining the core functionality of the workflow executor.
@@ -29,7 +29,7 @@ export interface IWorkflowExecutor {
   continue(
     workflow: WorkflowConfig,
     topic: string,
-    content: EventPayload,
+    content: EventPayload
   ): Promise<void>;
 }
 
@@ -60,7 +60,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
 
   /**
    * Creates a new WorkflowExecutor instance.
-   * @param {Kafka} kafka - Kafka client instance for message production
+   * @param {WorkflowExecutorConfig} config - The mediator config
    */
   constructor(config: WorkflowExecutorConfig) {
     this.kafka_producer = config.kafka.producer();
@@ -82,10 +82,10 @@ class WorkflowExecutor implements IWorkflowExecutor {
     const state: WorkflowState = {
       workflow_id,
       name: flow.name,
-      status: "In Progress",
+      status: 'In Progress',
       steps: {
         [flow.initiating_event.name]: {
-          status: "success",
+          status: 'success',
           payload: JSON.parse(initiating_event_output),
           on_failure: { retries: 0 },
         },
@@ -101,7 +101,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
       // Save new state for steps marked as ongoing
       for (const step of steps) {
         state.steps[step] = {
-          status: "ongoing",
+          status: 'ongoing',
           payload: null,
         };
       }
@@ -126,20 +126,20 @@ class WorkflowExecutor implements IWorkflowExecutor {
   public async continue(
     workflow: WorkflowConfig,
     topic: string,
-    content: EventPayload,
+    content: EventPayload
   ) {
     // Validate the topic
     const topic_match = topic.match(ValidationPatterns.TOPIC_REGEX);
-    if (!topic_match || topic_match[1] === "execute") {
+    if (!topic_match || topic_match[1] === 'execute') {
       console.log(`Invalid topic format: ${topic}`);
       return;
     }
-    const status = topic_match[1] as "success" | "failure";
+    const status = topic_match[1] as 'success' | 'failure';
 
     // find the state
     const { workflow_id } = content;
     const result = await this.state_store.get(workflow_id);
-    if (result.type === "failure") {
+    if (result.type === 'failure') {
       console.error(result.error.message);
       return;
     }
@@ -147,9 +147,9 @@ class WorkflowExecutor implements IWorkflowExecutor {
 
     // Find the step
     const step = workflow.steps.find(
-      (step) =>
-        step.response_topic.success.find((test) => topic === test) ||
-        step.response_topic.failure.find((test) => topic === test),
+      step =>
+        step.response_topic.success.find(test => topic === test) ||
+        step.response_topic.failure.find(test => topic === test)
     );
 
     if (!step) {
@@ -176,34 +176,34 @@ class WorkflowExecutor implements IWorkflowExecutor {
       workflow_name: state.name,
       step_name: step.name,
       step_output:
-        stepState && typeof stepState.payload !== "undefined"
+        stepState && typeof stepState.payload !== 'undefined'
           ? stepState.payload
           : {},
       state,
     };
 
     // Run step handlers
-    console.log("Running handlers");
+    console.log('Running handlers');
     this.run_handlers(status, step, actionContext);
 
     // Check for completion
     const allStepsCompleted = workflow.steps.every(
-      (s) => state.steps[s.name]?.status === "success",
+      s => state.steps[s.name]?.status === 'success'
     );
     if (allStepsCompleted) {
-      state.status = "Success";
+      state.status = 'Success';
       console.log(
-        `✅ Workflow "${workflow.name}" with id ${workflow_id} completed successfully.`,
+        `✅ Workflow "${workflow.name}" with id ${workflow_id} completed successfully.`
       );
-    } else if (status === "failure") {
-      state.status = "Failed";
+    } else if (status === 'failure') {
+      state.status = 'Failed';
       console.log(
-        `❌ Step "${step.name}" failed. Marking workflow ${workflow_id} as failed.`,
+        `❌ Step "${step.name}" failed. Marking workflow ${workflow_id} as failed.`
       );
     }
 
     // Trigger next steps if still in progress
-    if (state.status === "In Progress") {
+    if (state.status === 'In Progress') {
       try {
         // Run Ready Events
         await this.kafka_producer.connect();
@@ -212,7 +212,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
         // Save new state for steps marked as ongoing
         for (const step of steps) {
           state.steps[step] = {
-            status: "ongoing",
+            status: 'ongoing',
             payload: null,
           };
         }
@@ -244,21 +244,18 @@ class WorkflowExecutor implements IWorkflowExecutor {
    */
   private async run_ready_steps(
     workflow: WorkflowConfig,
-    state: WorkflowState,
+    state: WorkflowState
   ): Promise<[string[], Promise<void>]> {
     // Collect all steps that are marked as successfully completed
     const done_steps = new Set<string>(
-      Object.keys(state.steps).filter(
-        (k) => state.steps[k]?.status === "success",
-      ),
+      Object.keys(state.steps).filter(k => state.steps[k]?.status === 'success')
     );
 
     // Identify steps that are not yet done and whose dependencies are all satisfied
     const ready_steps = workflow.steps.filter(
-      (step) =>
+      step =>
         !done_steps.has(step.name) &&
-        (!step.depends_on ||
-          step.depends_on.every((dep) => done_steps.has(dep))),
+        (!step.depends_on || step.depends_on.every(dep => done_steps.has(dep)))
     );
 
     // Create a promise that sends all the ready steps asynchronously
@@ -275,7 +272,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
       await Promise.all(promises);
     })();
 
-    return [ready_steps.map((step) => step.name), promise] as const;
+    return [ready_steps.map(step => step.name), promise] as const;
   }
 
   /**
@@ -288,7 +285,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
    */
   private parse_input_payload(
     step: StepConfig,
-    steps: Record<string, StepState>,
+    steps: Record<string, StepState>
   ): Record<string, any> {
     const input = step.input ?? {};
     const result: Record<string, any> = {};
@@ -299,12 +296,12 @@ class WorkflowExecutor implements IWorkflowExecutor {
         const [_, stepName, field] = match;
         if (!stepName || !field) {
           throw new Error(
-            `Invalid input reference in step "${step.name}" for input "${value}". Expected format: {{stepName.field}}`,
+            `Invalid input reference in step "${step.name}" for input "${value}". Expected format: {{stepName.field}}`
           );
         }
         const stepState = steps[stepName];
         console.log(
-          `[parse_input_payload] stepName=${stepName}, field=${field}`,
+          `[parse_input_payload] stepName=${stepName}, field=${field}`
         );
         console.log(`[parse_input_payload] stepState:`, stepState);
         const payload = stepState?.payload;
@@ -315,7 +312,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
           result[key] = output[field];
         } else {
           throw new Error(
-            `Cannot resolve input for step "${step.name}": missing output field "${field}" from "${stepName}"`,
+            `Cannot resolve input for step "${step.name}": missing output field "${field}" from "${stepName}"`
           );
         }
       } else {
@@ -327,16 +324,16 @@ class WorkflowExecutor implements IWorkflowExecutor {
   }
 
   private run_handlers(
-    status: "success" | "failure",
+    status: 'success' | 'failure',
     step: StepConfig,
-    context: any,
+    context: any
   ) {
     const registry =
-      status === "success" ? this.success_registry : this.failure_registry;
+      status === 'success' ? this.success_registry : this.failure_registry;
     console.log(step.on_success);
     console.log(step.on_failure);
     console.log(`[run_handlers] status=${status}, step=${step.name}`);
-    if (status === "success" && Array.isArray(step.on_success)) {
+    if (status === 'success' && Array.isArray(step.on_success)) {
       for (const actionObj of step.on_success) {
         console.log(`[run_handlers] Processing action:`, actionObj);
         const handler = registry[actionObj.action];
@@ -344,12 +341,12 @@ class WorkflowExecutor implements IWorkflowExecutor {
           handler(context, actionObj);
         } else {
           console.warn(
-            `[run_handlers] No handler registered for action: ${actionObj.action}`,
+            `[run_handlers] No handler registered for action: ${actionObj.action}`
           );
         }
       }
     } else if (
-      status === "failure" &&
+      status === 'failure' &&
       step.on_failure &&
       step.on_failure.action
     ) {
@@ -359,12 +356,12 @@ class WorkflowExecutor implements IWorkflowExecutor {
         handler(context, step.on_failure);
       } else {
         console.warn(
-          `[run_handlers] No handler registered for action: ${step.on_failure.action}`,
+          `[run_handlers] No handler registered for action: ${step.on_failure.action}`
         );
       }
     } else {
       console.warn(
-        `[run_handlers] No actions to process for status=${status}, step=${step.name}`,
+        `[run_handlers] No actions to process for status=${status}, step=${step.name}`
       );
     }
   }

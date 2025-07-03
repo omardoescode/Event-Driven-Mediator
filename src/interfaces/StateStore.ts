@@ -7,10 +7,10 @@ export default interface StateStore<T> {
   /** get value in store associated with key */
   get(key: string): Promise<
     | {
-        type: "success";
+        type: 'success';
         data: T;
       }
-    | { type: "failure"; error: Error }
+    | { type: 'failure'; error: Error }
   >;
   /** creates a new key */
   get_new_key(): Promise<string>;

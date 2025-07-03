@@ -5,6 +5,12 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.4.2",
     "typedoc": "^0.28.7",
     "vitest": "^3.2.4"
   },
@@ -25,6 +31,14 @@
     "docs:serve": "cd docs && python3 -m http.server 8080",
     "test": "bun test",
     "check": "tsc --noEmit",
+    "lint": "eslint src __test__ --ext .ts,.tsx",
+    "lint:fix": "eslint src __test__ --ext .ts,.tsx --fix",
+    "lint:check": "eslint src __test__ --ext .ts,.tsx --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\" \"__test__/**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\" \"__test__/**/*.{ts,tsx,json,md}\"",
+    "lint:all": "bun run format:check && bun run lint",
+    "fix:all": "bun run format && bun run lint:fix",
+    "quality": "bun run check && bun run lint:check && bun run format:check",
     "pre-push": ".git/hooks/pre-push",
     "setup-hooks": "chmod +x .git/hooks/pre-push && echo '✅ Git hooks setup complete!'"
   }

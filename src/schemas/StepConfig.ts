@@ -1,40 +1,40 @@
-import { z } from "zod";
+import { z } from 'zod';
 import {
   ExecuteTopicSchema,
   FailureTopicSchema,
   SuccessTopicSchema,
-} from "./common";
+} from './common';
 
 const OnFailureSchema = z
-  .discriminatedUnion("action", [
+  .discriminatedUnion('action', [
     z.object({
-      action: z.literal("retry"),
+      action: z.literal('retry'),
       max_attempts: z.number().int().positive(),
-      action_after_retry_all: z.enum(["skip", "abort"]).default("skip"),
+      action_after_retry_all: z.enum(['skip', 'abort']).default('skip'),
     }),
     z.object({
-      action: z.literal("skip"),
+      action: z.literal('skip'),
     }),
     z.object({
-      action: z.literal("abort"),
+      action: z.literal('abort'),
     }),
   ])
   .and(
     z.object({
       report: z.boolean().default(true),
-    }),
+    })
   );
 
 const OnSuccessSchema = z.array(
-  z.discriminatedUnion("action", [
+  z.discriminatedUnion('action', [
     z.object({
-      action: z.literal("log"),
-      message: z.string().min(1, "Message must not be empty"),
+      action: z.literal('log'),
+      message: z.string().min(1, 'Message must not be empty'),
     }),
     z.object({
-      action: z.literal("log_output"),
+      action: z.literal('log_output'),
     }),
-  ]),
+  ])
 );
 
 const EventStepSchema = z.object({});
@@ -47,8 +47,8 @@ export const StepConfigSchema = z.object({
   /** Name of the step, used for referencing in dependencies and outputs */
   name: z
     .string()
-    .min(1, "Step name is required")
-    .regex(/^[a-zA-Z0-9]+$/, "Step name must contain only letters and numbers"),
+    .min(1, 'Step name is required')
+    .regex(/^[a-zA-Z0-9]+$/, 'Step name must contain only letters and numbers'),
 
   /** Kafka topic to publish the step execution message to */
   topic: ExecuteTopicSchema,

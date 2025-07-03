@@ -1,8 +1,8 @@
-import type { EventPayload } from "../event/EventPayload";
+import type { EventPayload } from '../event/EventPayload';
 
 export type StepState = {
   /** Step status */
-  status: "success" | "ongoing" | "failure";
+  status: 'success' | 'ongoing' | 'failure';
 
   /** payload */
   payload: EventPayload | null;
@@ -22,7 +22,7 @@ export default interface WorkflowState {
   name: string;
 
   /** Current status of the workflow execution */
-  status: "In Progress" | "Success" | "Failed";
+  status: 'In Progress' | 'Success' | 'Failed';
 
   /** Map Step state by the step name */
   steps: Record<string, StepState>;

@@ -1,13 +1,13 @@
-import type { WorkflowConfig } from "./schemas/WorkflowConfig";
-import { Kafka, logLevel, type Consumer } from "kafkajs";
+import type { WorkflowConfig } from './schemas/WorkflowConfig';
+import { Kafka, logLevel, type Consumer } from 'kafkajs';
 import WorkflowExecutor, {
   type WorkflowExecutorConfig,
-} from "./workflow/WorkflowExecutor";
-import { EventPayloadSchema } from "./event/EventPayload";
-import type { WorkflowParser } from "./interfaces/WorkflowParser";
-import type StateStore from "./interfaces/StateStore";
-import type WorkflowState from "./interfaces/WorkflowState";
-import type ActionRegistry from "./workflow/ActionRegistry";
+} from './workflow/WorkflowExecutor';
+import { EventPayloadSchema } from './event/EventPayload';
+import type { WorkflowParser } from './interfaces/WorkflowParser';
+import type StateStore from './interfaces/StateStore';
+import type WorkflowState from './interfaces/WorkflowState';
+import type ActionRegistry from './workflow/ActionRegistry';
 
 /**
  * Interface defining the core functionality of the Mediator service.
@@ -60,8 +60,8 @@ class Mediator implements IMediator {
     failure_registry,
   }: MediatorConfig) {
     this.kafka = new Kafka({
-      clientId: "Mediator",
-      brokers: ["localhost:29092"],
+      clientId: 'Mediator',
+      brokers: ['localhost:29092'],
       logLevel: logLevel.ERROR, // TODO: Remove this, and find some formatter for this log
     });
     this.parser_factory = parser_factory;
@@ -101,7 +101,7 @@ class Mediator implements IMediator {
       await admin.connect();
 
       const topic_metadata = await admin.fetchTopicMetadata();
-      const existing_topics = new Set(topic_metadata.topics.map((t) => t.name));
+      const existing_topics = new Set(topic_metadata.topics.map(t => t.name));
       const all: Set<string> = new Set();
 
       for (const flow of this.workflows.values()) {
@@ -115,12 +115,12 @@ class Mediator implements IMediator {
         }
       }
 
-      const missing = [...all].filter((topic) => !existing_topics.has(topic));
+      const missing = [...all].filter(topic => !existing_topics.has(topic));
 
-      if (missing.length == 0) console.log("All Kafka topics already exist");
+      if (missing.length == 0) console.log('All Kafka topics already exist');
       else
         await admin.createTopics({
-          topics: missing.map((t) => ({
+          topics: missing.map(t => ({
             topic: t,
             numPartitions: 2,
             replicationFactor: 1,
@@ -163,7 +163,7 @@ class Mediator implements IMediator {
 
     // Listen for all response topics (success and failure) for each step
     for (const workflow of this.workflows.values()) {
-      const response_topics = workflow.steps.flatMap((step) => [
+      const response_topics = workflow.steps.flatMap(step => [
         ...step.response_topic.success,
         ...step.response_topic.failure,
       ]);
@@ -210,8 +210,8 @@ class Mediator implements IMediator {
   public async disconnect(): Promise<void> {
     await Promise.all(
       [...this.consumers.values()].map((c, idx) =>
-        c.disconnect().then(() => console.log(`Consumer ${idx} disconnected`)),
-      ),
+        c.disconnect().then(() => console.log(`Consumer ${idx} disconnected`))
+      )
     );
   }
 }

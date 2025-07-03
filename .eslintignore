@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+docs/
+*.config.js
+*.config.ts
+coverage/
+.git/
+*.min.js
+*.bundle.js 

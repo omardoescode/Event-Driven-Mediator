@@ -1,4 +1,4 @@
-import type { WorkflowConfig } from "../schemas/WorkflowConfig";
+import type { WorkflowConfig } from '../schemas/WorkflowConfig';
 
 /**
  * Interface for workflow definition parsers.

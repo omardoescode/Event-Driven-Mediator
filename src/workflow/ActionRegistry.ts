@@ -1,4 +1,4 @@
-import type { EventPayload } from "../event/EventPayload";
+import type { EventPayload } from '../event/EventPayload';
 
 export interface ActionContext {
   workflow_id: string;

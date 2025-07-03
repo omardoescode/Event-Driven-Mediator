@@ -1,8 +1,8 @@
-import type { WorkflowParser } from "../interfaces/WorkflowParser";
-import { WorkflowConfigSchema } from "../schemas/WorkflowConfig";
-import YAML from "yaml";
-import path from "path";
-import fs from "fs";
+import type { WorkflowParser } from '../interfaces/WorkflowParser';
+import { WorkflowConfigSchema } from '../schemas/WorkflowConfig';
+import YAML from 'yaml';
+import path from 'path';
+import fs from 'fs';
 
 /**
  * YAML implementation of the WorkflowParser interface.
@@ -23,8 +23,8 @@ class YAMLWorkflowParser implements WorkflowParser {
     const result = WorkflowConfigSchema.safeParse(parsed);
     if (!result.success) {
       const reason = result.error.errors
-        .map((e) => `${e.path.join(".")}: ${e.message}`)
-        .join("\n");
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('\n');
       throw new Error(`Invalid workflow in ${file_name}:\n${reason}`);
     }
     return result.data;
@@ -43,7 +43,7 @@ class YAMLWorkflowParser implements WorkflowParser {
 
     if (!exists) throw new Error("File doesn't exist");
 
-    const file_content = await fs.promises.readFile(abs_path, "utf8");
+    const file_content = await fs.promises.readFile(abs_path, 'utf8');
     return file_content;
   }
 
