@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { RESOURCES_DIR } from './constants';
 import YAML from 'yaml';
-import { WorkflowConfigSchema } from '../src/schemas/WorkflowConfig';
+import { WorkflowConfigSchema } from '../../src/schemas/WorkflowConfig';
 
 function loadYaml(file: string) {
   const content = fs.readFileSync(

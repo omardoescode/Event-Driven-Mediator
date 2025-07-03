@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { StepConfigSchema } from '../src/schemas/StepConfig';
+import { StepConfigSchema } from '../../src/schemas/StepConfig';
 import fs from 'fs';
 import path from 'path';
 import { RESOURCES_DIR } from './constants';

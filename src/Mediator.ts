@@ -1,5 +1,5 @@
 import type { WorkflowConfig } from './schemas/WorkflowConfig';
-import { Kafka, logLevel, type Consumer } from 'kafkajs';
+import type { Consumer, Kafka } from 'kafkajs';
 import WorkflowExecutor, {
   type WorkflowExecutorConfig,
 } from './workflow/WorkflowExecutor';
@@ -25,6 +25,7 @@ export interface MediatorConfig {
   state_store: StateStore<WorkflowState>;
   success_registry: ActionRegistry;
   failure_registry: ActionRegistry;
+  kafka: Kafka;
 }
 
 /**
@@ -57,12 +58,9 @@ class Mediator implements IMediator {
     state_store,
     success_registry,
     failure_registry,
+    kafka,
   }: MediatorConfig) {
-    this.kafka = new Kafka({
-      clientId: 'Mediator',
-      brokers: ['localhost:29092'],
-      logLevel: logLevel.ERROR, // TODO: Remove this, and find some formatter for this log
-    });
+    this.kafka = kafka;
     this.parser_factory = parser_factory;
     this.executor_config = {
       state_store,

@@ -79,7 +79,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
     console.log(`Initiating workflow: ${workflow_id}`);
 
     // Wrap the initial event data in the EventPayload structure
-    const initialPayload = {
+    const initialPayload: EventPayload = {
       workflow_id,
       timestamp: new Date().toISOString(),
       success: true,
