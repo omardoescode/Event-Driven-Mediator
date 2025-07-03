@@ -5,6 +5,7 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
+    "typedoc": "^0.28.7",
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
@@ -16,5 +17,15 @@
     "uuid": "^11.1.0",
     "yaml": "^2.8.0",
     "zod": "^3.25.67"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "docs": "typedoc --entryPointStrategy Expand src",
+    "docs:watch": "typedoc --entryPointStrategy Expand src --watch",
+    "docs:serve": "cd docs && python3 -m http.server 8080",
+    "test": "bun test",
+    "check": "tsc --noEmit",
+    "pre-push": ".git/hooks/pre-push",
+    "setup-hooks": "chmod +x .git/hooks/pre-push && echo '✅ Git hooks setup complete!'"
   }
 }
