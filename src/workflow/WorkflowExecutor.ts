@@ -24,7 +24,7 @@ export interface IWorkflowExecutor {
    * Continues workflow execution after receiving a step response.
    * @param {WorkflowConfig} workflow - The workflow definition being executed
    * @param {string} topic - The Kafka topic that received the response
-   * @param {SharedEventPayload} content - The response event payload
+   * @param {EventPayload} content - The response event payload
    */
   continue(
     workflow: WorkflowConfig,
@@ -78,6 +78,14 @@ class WorkflowExecutor implements IWorkflowExecutor {
     const workflow_id = await this.state_store.get_new_key();
     console.log(`Initiating workflow: ${workflow_id}`);
 
+    // Wrap the initial event data in the EventPayload structure
+    const initialPayload = {
+      workflow_id,
+      timestamp: new Date().toISOString(),
+      success: true,
+      output: JSON.parse(initiating_event_output),
+    };
+
     const state: WorkflowState = {
       workflow_id,
       name: flow.name,
@@ -85,7 +93,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
       steps: {
         [flow.initiating_event.name]: {
           status: 'success',
-          payload: JSON.parse(initiating_event_output),
+          payload: initialPayload,
           on_failure: { retries: 0 },
         },
       },
@@ -120,7 +128,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
    * Updates workflow state and triggers ready steps if workflow is still in progress.
    * @param {WorkflowConfig} workflow - The workflow definition being executed
    * @param {string} topic - The Kafka topic that received the response
-   * @param {SharedEventPayload} content - The response event payload
+   * @param {EventPayload} content - The response event payload
    */
   public async continue(
     workflow: WorkflowConfig,
@@ -262,6 +270,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
       const promises = [];
       for (const step of ready_steps) {
         const message = this.parse_input_payload(step, state.steps);
+        console.log(`[run_ready_steps] Sending to topic: ${step.topic}`);
         const p = this.kafka_producer.send({
           topic: step.topic,
           messages: [{ value: JSON.stringify(message) }],
