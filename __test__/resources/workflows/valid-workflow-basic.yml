@@ -11,12 +11,24 @@ steps:
     response: event
     response_topic:
       success:
-        - users.completed.create
+        - users.success.create
       failure:
-        - users.failed.create
+        - users.failure.create
     on_failure:
       action: retry
       max_attempts: 3
     on_success:
       - action: log
         message: "User created successfully"
+  - name: SendWelcomeEmail
+    type: event
+    topic: email.execute.send
+    depends_on: [CreateUser]
+    response_topic:
+      success:
+        - email.success.send
+      failure:
+        - email.failure.send
+    on_success:
+      - action: log
+        message: "Welcome email sent successfully"

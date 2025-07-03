@@ -4,9 +4,9 @@ topic: users.execute.create
 response: event
 response_topic:
   success:
-    - users.completed.create
+    - users.success.create
   failure:
-    - users.failed.create
+    - users.failure.create
 on_failure:
   action: retry
   max_attempts: 3
