@@ -1,21 +1,46 @@
 name: test-workflow
 description: This is a test workflow
 version: 0.0.1
-initiating_topic: test-workflow.init
-initiating_name: InitiatingEvent
+initiating_event:
+  name: InitiatingEvent
+  topic: test-workflow.init
 
 steps:
   - name: SandboxCreation
+    type: event
     topic: sandbox.execute.create
     depends_on: []
-    expected_response_topic: step.completed.create
     input:
       name: "{{InitiatingEvent.name}}"
+    response: topic
+    response_topic:
+      success:
+        - sandbox.success.create
+      failure:
+        - sandbox.failure.create
+
+    on_success:
+      - action: log
+        message: "Sandbox created"
+      - action: log_output
+
+    on_failure:
+      action: retry
+      max_attempts: 3
+      action_after_retry_all: abort
 
   - name: ExecutorTest
+    type: event
     topic: executor.execute.test
     depends_on: [SandboxCreation]
+    response: topic
     input:
       sandbox_container_id: "{{SandboxCreation.container_id}}"
       sandbox_server_address: "{{SandboxCreation.server_address}}"
-    expected_response_topic: executor.completed.test
+    response_topic:
+      success:
+        - executor.success.test
+      failure:
+        - executor.failure.test
+    on_failure:
+      action: abort
