@@ -1,0 +1,108 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Mediator Service - Detailed Technical Documentation
+
+## Service Overview
+
+The **Mediator Service** is a critical event-driven messaging component within the Chimera multi-agent penetration testing system. It provides asynchronous communication infrastructure between different agents and system components using Apache Kafka.
+
+## Technical Architecture
+
+### Core Technologies
+- **Runtime**: Bun (TypeScript execution environment)
+- **Messaging**: Apache Kafka with KafkaJS client library
+- **Containerization**: Docker Compose for local development
+- **Language**: TypeScript with ESNext target
+
+### Dependencies
+- `kafkajs`: ^2.2.4 - Kafka client for Node.js/Bun
+- `@types/bun`: Latest - TypeScript definitions for Bun runtime
+- `typescript`: ^5 - TypeScript compiler (peer dependency)
+
+## Event Topics & Communication
+
+### Current Topic Structure
+```
+sandbox-events.created  (1 partition)
+sandbox-events.ready    (1 partition)
+```
+
+These topics facilitate:
+- **sandbox-events.created**: Signals when new testing environments/sandboxes are instantiated
+- **sandbox-events.ready**: Indicates when sandboxes are fully initialized and ready for penetration testing
+
+## File Structure & Implementation
+
+### Core Files
+- [setup_topics.ts](mdc:Mediator/src/setup_topics.ts) - Kafka topic initialization and configuration
+- [docker-compose.yml](mdc:Mediator/docker-compose.yml) - Kafka & Zookeeper container orchestration
+- [package.json](mdc:Mediator/package.json) - Service dependencies and configuration
+
+### Key Implementation Details
+
+#### Topic Creation ([setup_topics.ts](mdc:Mediator/src/setup_topics.ts))
+```typescript
+// Connects to Kafka broker at localhost:29092
+// Creates sandbox event topics with single partitions
+// Fetches and logs topic metadata for verification
+```
+
+#### Infrastructure ([docker-compose.yml](mdc:Mediator/docker-compose.yml))
+- **Zookeeper**: Port 22181 (external), 2181 (internal)
+- **Kafka Broker**: Port 29092 (external), 9092 (internal)
+- **Configuration**: Single broker setup with replication factor 1
+
+## Role in Chimera Architecture
+
+### Event-Driven Coordination
+The Mediator Service enables:
+- **Decoupled Communication**: Agents can publish/subscribe without direct dependencies
+- **Asynchronous Processing**: Non-blocking event handling across the system
+- **Scalable Architecture**: Foundation for adding more agents and event types
+- **State Synchronization**: Coordinating sandbox lifecycle across multiple agents
+
+### Integration Points
+- **Exploiter Agents**: Consume sandbox-ready events to begin vulnerability testing
+- **Environment Managers**: Publish sandbox creation and readiness events
+- **Vulnerability Knowledge Base**: Potentially consume/publish vulnerability discovery events
+- **Attack Path Constructors**: Coordinate complex multi-stage attack sequences
+
+## Development & Operations
+
+### Local Development
+```bash
+# Start Kafka infrastructure
+docker compose up
+
+# Create required topics
+bun run src/setup_topics.ts
+
+# Stop and clean environment
+docker compose down
+```
+
+### Future Enhancements
+As the Chimera system evolves, the Mediator Service should be extended to support:
+- Additional event types for different testing phases
+- Dead letter queues for failed message processing
+- Message schemas for structured event validation
+- Metrics and monitoring for event flow analysis
+- Multi-environment support for parallel testing scenarios
+
+## Configuration & Customization
+
+### Kafka Broker Configuration
+- **Auto Topic Creation**: Disabled (explicit topic management)
+- **Replication Factor**: 1 (suitable for development, increase for production)
+- **Partition Strategy**: Single partition per topic (can scale based on throughput needs)
+
+### Security Considerations
+- Currently configured for local development (no authentication)
+- Production deployment should implement:
+  - SASL/SSL authentication
+  - Topic-level ACLs
+  - Network segmentation
+  - Message encryption for sensitive vulnerability data
