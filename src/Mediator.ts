@@ -30,7 +30,7 @@ export interface MediatorConfig {
 /**
  * Main mediator class that orchestrates workflow execution and event handling.
  * Manages Kafka consumers and workflow state across the system.
- * @implements {IMediator}
+ * @param {MediatorConfig} config - Configuration object with parser_factory, state_store, success_registry, and failure_registry.
  */
 class Mediator implements IMediator {
   /** Map of workflow objects indexed by their initiating Kafka topic */
@@ -188,9 +188,10 @@ class Mediator implements IMediator {
                 console.log(`Invalid event payload: ${content}`);
                 return;
               }
+              const payload = parsed.data;
               console.log(`📨 Received message on ${topic}: ${content}`);
               const executor = new WorkflowExecutor(this.executor_config);
-              executor.continue(workflow, topic, parsed.data);
+              executor.continue(workflow, topic, payload);
             },
           });
 

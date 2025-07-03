@@ -5,11 +5,11 @@ import { z } from 'zod';
  * Format: <namespace>.(completed|failure|execute).<action>
  * Examples: users.execute.create, sandbox.success.create, executor.failure.test
  */
-const TOPIC_REGEX = /^[\w\-\/:]+\.(success|failure|execute)\.[\w\-\/:]+$/;
+const TOPIC_REGEX = /^[\w\-/:]+\.(success|failure|execute)\.[\w\-/:]+$/;
 
-const SUCCESS_TOPIC_REGIX = /^[\w\-\/:]+\.(success)\.[\w\-\/:]+$/;
-const FAILURE_TOPIC_REGIX = /^[\w\-\/:]+\.(failure)\.[\w\-\/:]+$/;
-const EXECUTE_TOPIC_REGIX = /^[\w\-\/:]+\.(execute)\.[\w\-\/:]+$/;
+const SUCCESS_TOPIC_REGIX = /^[\w\-/:]+\.(success)\.[\w\-/:]+$/;
+const FAILURE_TOPIC_REGIX = /^[\w\-/:]+\.(failure)\.[\w\-/:]+$/;
+const EXECUTE_TOPIC_REGIX = /^[\w\-/:]+\.(execute)\.[\w\-/:]+$/;
 
 /**
  * Shared schema for Kafka topic validation.

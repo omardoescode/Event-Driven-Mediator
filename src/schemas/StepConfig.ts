@@ -37,8 +37,6 @@ const OnSuccessSchema = z.array(
   ])
 );
 
-const EventStepSchema = z.object({});
-
 /**
  * Schema definition for workflow steps.
  * Validates the structure and required fields of individual workflow steps.

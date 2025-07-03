@@ -43,7 +43,6 @@ export interface WorkflowExecutorConfig {
 /**
  * Handles the execution of workflow instances.
  * Manages workflow state in Redis and coordinates step execution through Kafka.
- * @implements {IWorkflowExecutor}
  */
 class WorkflowExecutor implements IWorkflowExecutor {
   /** Kafka producer for sending step execution messages */

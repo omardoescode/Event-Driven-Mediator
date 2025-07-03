@@ -5,9 +5,7 @@ import path from 'path';
 import fs from 'fs';
 
 /**
- * YAML implementation of the WorkflowParser interface.
- * Parses workflow definitions from YAML files.
- * @implements {WorkflowParser}
+ * YAML workflow parser for reading and parsing workflow definitions from YAML files.
  */
 class YAMLWorkflowParser implements WorkflowParser {
   /**
