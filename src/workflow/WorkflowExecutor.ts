@@ -1,6 +1,4 @@
 import type { WorkflowConfig } from "../schemas/WorkflowConfig";
-import { v4 as uuid } from "uuid";
-import redis_client from "../redis_client";
 import type { Kafka, Producer } from "kafkajs";
 import type { EventPayload } from "../event/EventPayload";
 import type { StepConfig } from "../schemas/StepConfig";
@@ -8,6 +6,7 @@ import type WorkflowState from "../interfaces/WorkflowState";
 import type ActionRegistry from "./ActionRegistry";
 import { ValidationPatterns } from "../schemas/common";
 import type { StepState } from "../interfaces/WorkflowState";
+import type StateStore from "../interfaces/StateStore";
 
 /**
  * Interface defining the core functionality of the workflow executor.
@@ -53,7 +52,10 @@ class WorkflowExecutor implements IWorkflowExecutor {
    * Creates a new WorkflowExecutor instance.
    * @param {Kafka} kafka - Kafka client instance for message production
    */
-  constructor(kafka: Kafka) {
+  constructor(
+    kafka: Kafka,
+    private state_store: StateStore<WorkflowState>,
+  ) {
     this.kafka_producer = kafka.producer();
     this.success_registry = {};
     this.failure_registry = {};
@@ -66,7 +68,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
    * @param {string} initiating_event_output - Initial event data that triggered the workflow
    */
   public async init(flow: WorkflowConfig, initiating_event_output: string) {
-    const workflow_id = `workflow:${uuid()}`;
+    const workflow_id = await this.state_store.get_new_key();
     console.log(`Initiating workflow: ${workflow_id}`);
 
     const state: WorkflowState = {
@@ -100,7 +102,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
       await promise;
 
       // Save new state
-      await redis_client.set(workflow_id, JSON.stringify(state));
+      await this.state_store.set(workflow_id, state);
     } finally {
       await this.kafka_producer.disconnect();
     }
@@ -128,14 +130,12 @@ class WorkflowExecutor implements IWorkflowExecutor {
 
     // find the state
     const { workflow_id } = content;
-    const state_str = await redis_client.get(workflow_id);
-
-    if (!state_str) {
-      console.log(`${workflow_id} not found in state store`);
+    const result = await this.state_store.get(workflow_id);
+    if (result.type === "failure") {
+      console.error(result.error.message);
       return;
     }
-
-    const state = JSON.parse(state_str) as WorkflowState;
+    const { data: state } = result;
 
     // Find the step
     const step = workflow.steps.find(
@@ -213,14 +213,14 @@ class WorkflowExecutor implements IWorkflowExecutor {
         await promise;
 
         // Save new state
-        await redis_client.set(workflow_id, JSON.stringify(state));
+        await this.state_store.set(workflow_id, state);
       } finally {
         await this.kafka_producer.disconnect();
       }
     }
 
     // Persist the updated state
-    await redis_client.set(workflow_id, JSON.stringify(state));
+    await this.state_store.set(workflow_id, state);
   }
 
   /**

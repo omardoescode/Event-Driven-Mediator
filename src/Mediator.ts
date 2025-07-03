@@ -3,6 +3,8 @@ import { Kafka, logLevel, type Consumer } from "kafkajs";
 import WorkflowExecutor from "./workflow/WorkflowExecutor";
 import { EventPayloadSchema } from "./event/EventPayload";
 import type { WorkflowParser } from "./interfaces/WorkflowParser";
+import type StateStore from "./interfaces/StateStore";
+import type WorkflowState from "./interfaces/WorkflowState";
 
 /**
  * Interface defining the core functionality of the Mediator service.
@@ -33,8 +35,12 @@ class Mediator implements IMediator {
   /**
    * Creates a new Mediator instance.
    * @param {() => WorkflowParser} parserFactory - Factory function that creates workflow parser instances
+   * @param StateStore<WorkflowState> statte_store - A workflow state store used by workflow executor
    */
-  constructor(private readonly parserFactory: () => WorkflowParser) {
+  constructor(
+    private readonly parserFactory: () => WorkflowParser,
+    private state_store: StateStore<WorkflowState>,
+  ) {
     this.kafka = new Kafka({
       clientId: "Mediator",
       brokers: ["localhost:29092"],
@@ -66,36 +72,38 @@ class Mediator implements IMediator {
    */
   public async init_topics(): Promise<void> {
     const admin = this.kafka.admin();
-    await admin.connect();
+    try {
+      await admin.connect();
 
-    const topic_metadata = await admin.fetchTopicMetadata();
-    const existing_topics = new Set(topic_metadata.topics.map((t) => t.name));
-    const all: Set<string> = new Set();
+      const topic_metadata = await admin.fetchTopicMetadata();
+      const existing_topics = new Set(topic_metadata.topics.map((t) => t.name));
+      const all: Set<string> = new Set();
 
-    for (const flow of this.workflows.values()) {
-      all.add(flow.initiating_event.topic);
-      for (const step of flow.steps) {
-        all.add(step.topic);
-        for (const topic_response of step.response_topic.success)
-          all.add(topic_response);
-        for (const topic_response of step.response_topic.failure)
-          all.add(topic_response);
+      for (const flow of this.workflows.values()) {
+        all.add(flow.initiating_event.topic);
+        for (const step of flow.steps) {
+          all.add(step.topic);
+          for (const topic_response of step.response_topic.success)
+            all.add(topic_response);
+          for (const topic_response of step.response_topic.failure)
+            all.add(topic_response);
+        }
       }
+
+      const missing = [...all].filter((topic) => !existing_topics.has(topic));
+
+      if (missing.length == 0) console.log("All Kafka topics already exist");
+      else
+        await admin.createTopics({
+          topics: missing.map((t) => ({
+            topic: t,
+            numPartitions: 2,
+            replicationFactor: 1,
+          })),
+        });
+    } finally {
+      await admin.disconnect();
     }
-
-    const missing = [...all].filter((topic) => !existing_topics.has(topic));
-
-    if (missing.length == 0) console.log("All Kafka topics already exist");
-    else
-      await admin.createTopics({
-        topics: missing.map((t) => ({
-          topic: t,
-          numPartitions: 2,
-          replicationFactor: 1,
-        })),
-      });
-
-    await admin.disconnect();
   }
 
   /**
@@ -118,7 +126,7 @@ class Mediator implements IMediator {
             const content = message.value?.toString();
             if (!content) return;
             console.log(`📨 Received message on ${topic}: ${content}`);
-            const executor = new WorkflowExecutor(this.kafka);
+            const executor = new WorkflowExecutor(this.kafka, this.state_store);
             executor.init(workflow, content);
           },
         });
@@ -156,7 +164,10 @@ class Mediator implements IMediator {
                 return;
               }
               console.log(`📨 Received message on ${topic}: ${content}`);
-              const executor = new WorkflowExecutor(this.kafka);
+              const executor = new WorkflowExecutor(
+                this.kafka,
+                this.state_store,
+              );
               executor.continue(workflow, topic, parsed.data);
             },
           });
@@ -171,11 +182,15 @@ class Mediator implements IMediator {
   }
 
   /**
-   * Gracefully disconnects all Kafka consumers and shuts down the mediator.
+   * Gracefully disconnects all Kafka consumers
    * @returns {Promise<void>}
    */
   public async disconnect(): Promise<void> {
-    await Promise.all([...this.consumers.values()].map((c) => c.disconnect()));
+    await Promise.all(
+      [...this.consumers.values()].map((c, idx) =>
+        c.disconnect().then(() => console.log(`Consumer ${idx} disconnected`)),
+      ),
+    );
   }
 }
 

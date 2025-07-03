@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import Mediator from "./Mediator";
 import YAMLWorkflowParser from "./workflow/YAMLWorkflowParser";
+import RedisStateStore from "./state/RedisStateStore";
+import redis_client from "./redis_client";
 
 /**
  * Entry point for the Mediator service.
@@ -9,7 +11,10 @@ import YAMLWorkflowParser from "./workflow/YAMLWorkflowParser";
  */
 const folder_name = "./workflows";
 async function main() {
-  const mediator = new Mediator(() => new YAMLWorkflowParser());
+  const mediator = new Mediator(
+    () => new YAMLWorkflowParser(),
+    new RedisStateStore(redis_client),
+  );
   const shutdown = async () => {
     console.log("Disconnecting Consumers...");
     await mediator.disconnect();
