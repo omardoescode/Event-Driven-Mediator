@@ -1,17 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
 import path from 'path';
-import { RESOURCES_DIR } from './constants';
-import YAML from 'yaml';
+import { RESOURCES_DIR } from '../util/constants';
 import { WorkflowConfigSchema } from '../../src/schemas/WorkflowConfig';
+import { loadYaml } from '../util/yaml';
 
-function loadYaml(file: string) {
-  const content = fs.readFileSync(
-    path.join(RESOURCES_DIR, 'workflows', file),
-    'utf8'
-  );
-  return YAML.parse(content);
-}
+const parent = path.join(RESOURCES_DIR, 'workflows');
 
 describe('Workflow YAML validation', () => {
   const validFiles = ['valid-workflow-basic.yml'];
@@ -19,7 +12,7 @@ describe('Workflow YAML validation', () => {
 
   validFiles.forEach(file => {
     it(`✅ passes for ${file}`, () => {
-      const data = loadYaml(file);
+      const data = loadYaml(file, parent);
       const result = WorkflowConfigSchema.safeParse(data);
       expect(result.success).toBe(true);
     });
@@ -27,7 +20,7 @@ describe('Workflow YAML validation', () => {
 
   invalidFiles.forEach(file => {
     it(`❌ fails for ${file}`, () => {
-      const data = loadYaml(file);
+      const data = loadYaml(file, parent);
       const result = WorkflowConfigSchema.safeParse(data);
       expect(result.success).toBe(false);
       if (!result.success) {

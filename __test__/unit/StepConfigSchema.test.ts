@@ -1,17 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { StepConfigSchema } from '../../src/schemas/StepConfig';
-import fs from 'fs';
 import path from 'path';
-import { RESOURCES_DIR } from './constants';
-import YAML from 'yaml';
+import { RESOURCES_DIR } from '../util/constants';
+import { loadYaml } from '../util/yaml';
 
-function loadYaml(file: string) {
-  const content = fs.readFileSync(
-    path.join(RESOURCES_DIR, 'steps', file),
-    'utf8'
-  );
-  return YAML.parse(content);
-}
+const parent = path.join(RESOURCES_DIR, 'steps');
 
 describe('StepSchema YAML validation', () => {
   const validFiles = ['valid-step-1.yml', 'valid-step-2.yml'];
@@ -25,7 +18,7 @@ describe('StepSchema YAML validation', () => {
 
   validFiles.forEach(file => {
     it(`✅ passes for ${file}`, () => {
-      const data = loadYaml(file);
+      const data = loadYaml(file, parent);
       const result = StepConfigSchema.safeParse(data);
       expect(result.success).toBe(true);
     });
@@ -33,7 +26,7 @@ describe('StepSchema YAML validation', () => {
 
   invalidFiles.forEach(file => {
     it(`❌ fails for ${file}`, () => {
-      const data = loadYaml(file);
+      const data = loadYaml(file, parent);
       const result = StepConfigSchema.safeParse(data);
       expect(result.success).toBe(false);
       if (!result.success) {

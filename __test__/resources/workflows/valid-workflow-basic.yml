@@ -1,12 +1,11 @@
 name: BasicWorkflow
 description: A sample workflow
-version: "1.0.0"
+version: '1.0.0'
 initiating_event:
   topic: trigger.workflow
   name: triggerUserWorkflow
 steps:
   - name: CreateUser
-    type: event
     topic: users.execute.create
     response: event
     response_topic:
@@ -19,9 +18,8 @@ steps:
       max_attempts: 3
     on_success:
       - action: log
-        message: "User created successfully"
+        message: 'User created successfully'
   - name: SendWelcomeEmail
-    type: event
     topic: email.execute.send
     depends_on: [CreateUser]
     response_topic:
@@ -31,4 +29,4 @@ steps:
         - email.failure.send
     on_success:
       - action: log
-        message: "Welcome email sent successfully"
+        message: 'Welcome email sent successfully'
