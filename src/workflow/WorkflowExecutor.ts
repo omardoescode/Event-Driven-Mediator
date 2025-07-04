@@ -4,8 +4,9 @@ import type { EventPayload } from '../event/EventPayload';
 import type { StepConfig } from '../schemas/StepConfig';
 import type WorkflowState from '../interfaces/WorkflowState';
 import type ActionRegistry from './ActionRegistry';
+import type { ActionContext } from './ActionRegistry';
 import { ValidationPatterns } from '../schemas/common';
-import type { StepState } from '../interfaces/WorkflowState';
+import type StepState from '../interfaces/StepState';
 import type StateStore from '../interfaces/StateStore';
 
 /**
@@ -92,9 +93,9 @@ class WorkflowExecutor implements IWorkflowExecutor {
       status: 'In Progress',
       steps: {
         [flow.initiating_event.name]: {
+          name: flow.initiating_event.name,
           status: 'success',
           payload: initialPayload,
-          on_failure: { retries: 0 },
         },
       },
       initiated_at: new Date(),
@@ -108,6 +109,7 @@ class WorkflowExecutor implements IWorkflowExecutor {
       // Save new state for steps marked as ongoing
       for (const step of steps) {
         state.steps[step] = {
+          name: step,
           status: 'ongoing',
           payload: null,
         };
@@ -115,6 +117,9 @@ class WorkflowExecutor implements IWorkflowExecutor {
 
       // Wait for all runs to finish
       await promise;
+
+      // Print the initial state
+      console.dir(state);
 
       // Save new state
       await this.state_store.set(workflow_id, state);
@@ -126,12 +131,12 @@ class WorkflowExecutor implements IWorkflowExecutor {
   /**
    * Continues workflow execution after receiving a step response.
    * Updates workflow state and triggers ready steps if workflow is still in progress.
-   * @param {WorkflowConfig} workflow - The workflow definition being executed
+   * @param {WorkflowConfig} workflow_config - The workflow definition being executed
    * @param {string} topic - The Kafka topic that received the response
    * @param {EventPayload} content - The response event payload
    */
   public async continue(
-    workflow: WorkflowConfig,
+    workflow_config: WorkflowConfig,
     topic: string,
     content: EventPayload
   ) {
@@ -145,15 +150,16 @@ class WorkflowExecutor implements IWorkflowExecutor {
 
     // find the state
     const { workflow_id } = content;
+    console.log(`Continuing with workflow ${workflow_id}`);
     const result = await this.state_store.get(workflow_id);
     if (result.type === 'failure') {
       console.error(result.error.message);
       return;
     }
-    const { data: state } = result;
+    const workflow_state = result.data;
 
     // Find the step
-    const step = workflow.steps.find(
+    const step = workflow_config.steps.find(
       step =>
         step.response_topic.success.find(test => topic === test) ||
         step.response_topic.failure.find(test => topic === test)
@@ -164,61 +170,85 @@ class WorkflowExecutor implements IWorkflowExecutor {
       return;
     }
 
-    // Update the step state
-    if (!state.steps[step.name]) {
-      state.steps[step.name] = {
-        status: status,
-        payload: content,
-        on_failure: { retries: 0 },
-      };
-    } else {
-      state.steps[step.name]!.status = status;
-      state.steps[step.name]!.payload = content;
+    // This means that the step has already been marked a failure or a success
+    // So we have dont this before
+    if (workflow_state.steps[step.name]?.status !== 'ongoing') {
+      console.log(`Step has already fired`);
+      return;
     }
 
-    // Prepare action context
-    const stepState = state.steps[step.name];
-    const actionContext = {
-      workflow_id: state.workflow_id,
-      workflow_name: state.name,
-      step_name: step.name,
-      step_output:
-        stepState && typeof stepState.payload !== 'undefined'
-          ? stepState.payload
-          : {},
-      state,
+    // Update the step state
+    workflow_state.steps[step.name] = {
+      name: step.name,
+      status: status,
+      payload: content,
     };
 
-    // Run step handlers
-    console.log('Running handlers');
-    this.run_handlers(status, step, actionContext);
+    // Prepare action context
+    const stepState = workflow_state.steps[step.name] as StepState; // We are sure since we assigned it above
+    const self = this;
+    const actionContext: ActionContext = {
+      workflow: workflow_state, // WorkflowState
+      step: stepState, // StepState
+      async retry_step() {
+        // Mark the step as ongoing and re-send the message for this step
+        workflow_state.steps[step.name] = {
+          name: step.name,
+          status: 'ongoing',
+          payload: null,
+        };
+        await self.state_store.set(workflow_id, workflow_state);
+        await self.kafka_producer.connect();
+        const message = self.parse_input_payload(step, workflow_state.steps);
+        await self.kafka_producer.send({
+          topic: step.topic,
+          messages: [{ value: JSON.stringify(message) }],
+        });
+        await self.kafka_producer.disconnect();
+      },
+      async run_handler(action, params) {
+        // Find the handler in the appropriate registry and run it
+        const handler = self.failure_registry[action];
+        if (handler) {
+          await handler(this, params);
+        } else {
+          console.warn(
+            `[ActionContext] No handler registered for action: ${action}`
+          );
+        }
+      },
+    };
 
     // Check for completion
-    const allStepsCompleted = workflow.steps.every(
-      s => state.steps[s.name]?.status === 'success'
+    const allStepsCompleted = !workflow_config.steps.find(
+      s => workflow_state.steps[s.name]?.status === 'ongoing'
     );
     if (allStepsCompleted) {
-      state.status = 'Success';
+      workflow_state.status = 'Success';
       console.log(
-        `✅ Workflow "${workflow.name}" with id ${workflow_id} completed successfully.`
+        `✅ Workflow "${workflow_config.name}" with id ${workflow_id} completed successfully.`
       );
     } else if (status === 'failure') {
-      state.status = 'Failed';
+      workflow_state.status = 'Failed';
       console.log(
         `❌ Step "${step.name}" failed. Marking workflow ${workflow_id} as failed.`
       );
     }
 
     // Trigger next steps if still in progress
-    if (state.status === 'In Progress') {
+    if (workflow_state.status === 'In Progress') {
       try {
         // Run Ready Events
         await this.kafka_producer.connect();
-        const [steps, promise] = await this.run_ready_steps(workflow, state);
+        const [steps, promise] = await this.run_ready_steps(
+          workflow_config,
+          workflow_state
+        );
 
         // Save new state for steps marked as ongoing
         for (const step of steps) {
-          state.steps[step] = {
+          workflow_state.steps[step] = {
+            name: step,
             status: 'ongoing',
             payload: null,
           };
@@ -227,15 +257,19 @@ class WorkflowExecutor implements IWorkflowExecutor {
         // Wait for all runs to finish
         await promise;
 
+        // Run step handlers
+        console.log(`[workflow: ${workflow_id}] Running handlers`);
+        this.run_handlers(status, step, actionContext);
+
         // Save new state
-        await this.state_store.set(workflow_id, state);
+        await this.state_store.set(workflow_id, workflow_state);
       } finally {
         await this.kafka_producer.disconnect();
       }
     }
 
     // Persist the updated state
-    await this.state_store.set(workflow_id, state);
+    await this.state_store.set(workflow_id, workflow_state);
   }
 
   /**

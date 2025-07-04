@@ -83,7 +83,7 @@ class Mediator implements IMediator {
       this.workflows.set(workflow.initiating_event.topic, workflow);
     } catch (err) {
       console.log(`Failed to load workflow: ${file_name}`);
-      if (err instanceof Error) console.log(err.message);
+      throw err;
     }
   }
 
@@ -117,11 +117,14 @@ class Mediator implements IMediator {
       if (missing.length == 0) console.log('All Kafka topics already exist');
       else
         await admin.createTopics({
-          topics: missing.map(t => ({
-            topic: t,
-            numPartitions: 2,
-            replicationFactor: 1,
-          })),
+          topics: missing.map(t => {
+            console.log(`[init_topics] topic ${t} initialization`);
+            return {
+              topic: t,
+              numPartitions: 2,
+              replicationFactor: 1,
+            };
+          }),
         });
     } finally {
       await admin.disconnect();

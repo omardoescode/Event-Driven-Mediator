@@ -1,18 +1,5 @@
 import type { EventPayload } from '../event/EventPayload';
-
-export type StepState = {
-  /** Step status */
-  status: 'success' | 'ongoing' | 'failure';
-
-  /** payload */
-  payload: EventPayload | null;
-
-  /** handle failures */
-  on_failure?: {
-    /** how many retries it has so far */
-    retries: number;
-  };
-};
+import type StepState from './StepState';
 
 export default interface WorkflowState {
   /** Unique identifier for this workflow instance */

@@ -5,37 +5,13 @@ import {
   SuccessTopicSchema,
 } from './common';
 
-const OnFailureSchema = z
-  .discriminatedUnion('action', [
-    z.object({
-      action: z.literal('retry'),
-      max_attempts: z.number().int().positive(),
-      action_after_retry_all: z.enum(['skip', 'abort']).default('skip'),
-    }),
-    z.object({
-      action: z.literal('skip'),
-    }),
-    z.object({
-      action: z.literal('abort'),
-    }),
-  ])
-  .and(
-    z.object({
-      report: z.boolean().default(true),
-    })
-  );
-
-const OnSuccessSchema = z.array(
-  z.discriminatedUnion('action', [
-    z.object({
-      action: z.literal('log'),
-      message: z.string().min(1, 'Message must not be empty'),
-    }),
-    z.object({
-      action: z.literal('log_output'),
-    }),
-  ])
-);
+const ActionSchema = z
+  .object({
+    action: z.string().min(1, 'Action must not be empty'),
+  })
+  .and(z.record(z.union([z.string(), z.boolean(), z.number()])));
+const OnFailureSchema = ActionSchema;
+const OnSuccessSchema = z.array(ActionSchema);
 
 /**
  * Schema definition for workflow steps.
